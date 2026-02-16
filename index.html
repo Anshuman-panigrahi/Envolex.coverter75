@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Envolex - AI-Powered Document Converter & Problem Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+            --secondary-gradient: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            --purple-gradient: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+            --dark-bg: #0a0f1e;
+            --card-bg: #131b2e;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 10%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            animation: gradientShift 20s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-10%, -10%) rotate(180deg); }
+        }
+
+        .loader-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+
+        .loader-wrapper.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+
+        .loader::before,
+        .loader::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: var(--accent-blue);
+            animation: spin 1.5s linear infinite;
+        }
+
+        .loader::before {
+            width: 100%;
+            height: 100%;
+            border-right-color: var(--accent-green);
+        }
+
+        .loader::after {
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-top-color: var(--accent-cyan);
+            animation-duration: 1s;
+            animation-direction: reverse;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Sora', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            background: rgba(19, 27, 46, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo-text {
+            font-family: 'Sora', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .developer-credit {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .developer-credit strong {
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 4rem 2rem 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease 0.3s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero h1 {
+            font-family: 'Sora', sans-serif;
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            line-height: 1.6;
+        }
+
+        .hero-images {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-img {
+            width: clamp(200px, 30vw, 350px);
+            height: auto;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeIn 0.8s ease both;
+        }
+
+        .hero-img:nth-child(1) { animation-delay: 0.4s; }
+        .hero-img:nth-child(2) { animation-delay: 0.5s; }
+
+        .hero-img:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 30px 80px rgba(59, 130, 246, 0.4);
+        }
+
+        .section-title {
+            font-family: 'Sora', sans-serif;
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .converter-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .converter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            animation: fadeIn 0.8s ease 0.6s both;
+        }
+
+        .converter-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .converter-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .converter-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .converter-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.2);
+        }
+
+        .ai-solver-card {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(217, 70, 239, 0.05) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .ai-solver-card::before {
+            background: var(--purple-gradient);
+        }
+
+        .ai-solver-card:hover {
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+        }
+
+        .ai-solver-card .card-icon {
+            background: var(--purple-gradient);
+            box-shadow: 0 8px 24px rgba(109, 65, 211, 0.3);
+        }
+
+        .card-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .ai-solver-card .upload-area:hover {
+            border-color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .file-info.show {
+            display: block;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .file-name {
+            color: var(--accent-green);
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .convert-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            margin-top: 1.5rem;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'DM Sans', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-solver-card .convert-btn {
+            background: var(--purple-gradient);
+        }
+
+        .convert-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .convert-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .convert-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
+        }
+
+        .ai-solver-card .convert-btn:hover {
+            box-shadow: 0 12px 32px rgba(139, 92, 246, 0.4);
+        }
+
+        .convert-btn:active {
+            transform: translateY(0);
+        }
+
+        .convert-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-bar {
+            display: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--secondary-gradient);
+            width: 0;
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        /* AI Solution Display */
+        .solution-display {
+            display: none;
+            margin-top: 2rem;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .solution-display.show {
+            display: block;
+            animation: slideUp 0.5s ease;
+        }
+
+        .solution-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .solution-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-purple);
+        }
+
+        .copy-btn, .download-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover, .download-btn:hover {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: var(--accent-purple);
+        }
+
+        .solution-content {
+            background: #1e1e1e;
+            padding: 1.5rem;
+            border-radius: 12px;
+            overflow-x: auto;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .solution-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .solution-content code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .processing-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 15, 30, 0.95);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .processing-overlay.show {
+            display: flex;
+        }
+
+        .processing-content {
+            text-align: center;
+        }
+
+        .processing-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        .processing-text {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding: 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(19, 27, 46, 0.5);
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        footer strong {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 1rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .logo-img {
+                width: 50px;
+                height: 50px;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .hero {
+                padding: 2rem 1rem;
+            }
+
+            .converter-section {
+                padding: 2rem 1rem;
+            }
+
+            .converter-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .converter-card {
+                padding: 1.5rem;
+            }
+
+            .hero-images {
+                gap: 1rem;
+            }
+
+            .solution-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="loader-wrapper" id="loader">
+        <div class="loader">
+            <div class="loader-logo">Envolex</div>
+        </div>
+    </div>
+
+    <div class="processing-overlay" id="processingOverlay">
+        <div class="processing-content">
+            <div class="processing-spinner"></div>
+            <div class="processing-text" id="processingText">Processing...</div>
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">Please wait</div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-content">
+            <div class="logo-section">
+                <img src="logo.jpg.png" alt="Envolex Logo" class="logo-img">
+                <div class="logo-text">Envolex</div>
+            </div>
+            <div class="developer-credit">
+                Developed by<br><strong>Anshuman Panigrahi</strong>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>AI-Powered Document Converter & Problem Solver</h1>
+        <p>Convert documents with highest quality AND solve coding problems with AI. Upload PDFs, images with code problems and get instant solutions!</p>
+        
+        <div class="hero-images">
+            <img src="vector.1.jpg.jpg" alt="Team Collaboration" class="hero-img">
+            <img src="vector2.jpg.jpg" alt="Presentation" class="hero-img">
+        </div>
+    </section>
+
+    <!-- AI Problem Solver Section -->
+    <section class="converter-section">
+        <h2 class="section-title">🤖 AI Problem Solver</h2>
+        <div class="converter-grid">
+            <div class="converter-card ai-solver-card">
+                <div class="card-header">
+                    <div class="card-icon">🧠</div>
+                    <h2 class="card-title">AI Code & Problem Solver</h2>
+                </div>
+                <p class="card-description">Upload programming problems, screenshots, PDFs, or images. Our AI will analyze and provide complete solutions with explanations!</p>
+                
+                <div class="upload-area" id="aiSolverUploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">Click to upload or drag & drop<br><small>PDF, PNG, JPG, JPEG files</small></div>
+                </div>
+                <input type="file" id="aiSolverInput" class="file-input" accept=".pdf,.png,.jpg,.jpeg">
+                
+                <div class="file-info" id="aiSolverInfo">
+                    <div class="file-name" id="aiSolverName"></div>
+                </div>
+                
+                <button class="convert-btn" id="aiSolverBtn" disabled>
+                    <span class="btn-text">🚀 Solve with AI</span>
+                </button>
+
+                <div class="solution-display" id="solutionDisplay">
+                    <div class="solution-header">
+                        <div class="solution-title">✨ AI Solution</div>
+                        <div>
+                            <button class="copy-btn" id="copySolutionBtn">📋 Copy Code</button>
+                            <button class="download-btn" id="downloadSolutionBtn">💾 Download</button>
+                        </div>
+                    </div>
+                    <div class="solution-content" id="solutionContent"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Document Converters Section -->
+    <section class="converter-section">
+        <h2 class="section-title">📄 Document Converters</h2>
+        <div class="converter-grid">
+            <!-- Word to PDF -->
+            <div class="converter-card">
+                <div class="card-header">
+                    <div class="card-icon">📄</div>
+                    <h2 class="card-title">Word to PDF</h2>
+                </div>
+                <p class="card-description">Convert your Word documents (.docx) to high-quality PDF files instantly.</p>
+                
+                <div class="upload-area" onclick="document.getElementById('wordToPdfInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag & drop<br><small>DOCX files only</small></div>
+                </div>
+                <input type="file" id="wordToPdfInput" class="file-input" accept=".docx">
+                
+                <div class="file-info" id="wordToPdfInfo">
+                    <div class="file-name" id="wordToPdfName"></div>
+                </div>
+                
+                <button class="convert-btn" id="wordToPdfBtn" disabled>
+                    <span class="btn-text">Convert to PDF</span>
+                </button>
+                
+                <div class="progress-bar" id="wordToPdfProgress">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- PDF to Word -->
+            <div class="converter-card">
+                <div class="card-header">
+                    <div class="card-icon">📝</div>
+                    <h2 class="card-title">PDF to Word</h2>
+                </div>
+                <p class="card-description">Extract text content from PDF and convert to editable Word documents (.docx).</p>
+                
+                <div class="upload-area" onclick="document.getElementById('pdfToWordInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag & drop<br><small>PDF files only</small></div>
+                </div>
+                <input type="file" id="pdfToWordInput" class="file-input" accept=".pdf">
+                
+                <div class="file-info" id="pdfToWordInfo">
+                    <div class="file-name" id="pdfToWordName"></div>
+                </div>
+                
+                <button class="convert-btn" id="pdfToWordBtn" disabled>
+                    <span class="btn-text">Convert to Word</span>
+                </button>
+                
+                <div class="progress-bar" id="pdfToWordProgress">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Excel to PDF -->
+            <div class="converter-card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <h2 class="card-title">Excel to PDF</h2>
+                </div>
+                <p class="card-description">Convert your Excel spreadsheets (.xlsx, .xls) to PDF format with preserved formatting.</p>
+                
+                <div class="upload-area" onclick="document.getElementById('excelToPdfInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag & drop<br><small>XLSX, XLS files</small></div>
+                </div>
+                <input type="file" id="excelToPdfInput" class="file-input" accept=".xlsx,.xls">
+                
+                <div class="file-info" id="excelToPdfInfo">
+                    <div class="file-name" id="excelToPdfName"></div>
+                </div>
+                
+                <button class="convert-btn" id="excelToPdfBtn" disabled>
+                    <span class="btn-text">Convert to PDF</span>
+                </button>
+                
+                <div class="progress-bar" id="excelToPdfProgress">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- PPT to PDF -->
+            <div class="converter-card">
+                <div class="card-header">
+                    <div class="card-icon">📑</div>
+                    <h2 class="card-title">PPT to PDF</h2>
+                </div>
+                <p class="card-description">Create a reference PDF for your PowerPoint file. For full conversion, use PowerPoint's "Save as PDF".</p>
+                
+                <div class="upload-area" onclick="document.getElementById('pptToPdfInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag & drop<br><small>PPTX files only</small></div>
+                </div>
+                <input type="file" id="pptToPdfInput" class="file-input" accept=".pptx">
+                
+                <div class="file-info" id="pptToPdfInfo">
+                    <div class="file-name" id="pptToPdfName"></div>
+                </div>
+                
+                <button class="convert-btn" id="pptToPdfBtn" disabled>
+                    <span class="btn-text">Convert to PDF</span>
+                </button>
+                
+                <div class="progress-bar" id="pptToPdfProgress">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 <strong>Envolex</strong> - AI-Powered Document Converter & Problem Solver</p>
+        <p style="margin-top: 0.5rem;">Developed with ❤️ by <strong>Anshuman Panigrahi</strong></p>
+    </footer>
+
+    <script>
+        // Hide loader after page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+            }, 1500);
+        });
+
+        function showProcessing(text = 'Processing...') {
+            document.getElementById('processingText').textContent = text;
+            document.getElementById('processingOverlay').classList.add('show');
+        }
+
+        function hideProcessing() {
+            document.getElementById('processingOverlay').classList.remove('show');
+        }
+
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function setupFileUpload(inputId, infoId, nameId, btnId) {
+            const input = document.getElementById(inputId);
+            const info = document.getElementById(infoId);
+            const nameEl = document.getElementById(nameId);
+            const btn = document.getElementById(btnId);
+            
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    nameEl.textContent = file.name;
+                    info.classList.add('show');
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // AI Problem Solver
+        const aiSolverInput = document.getElementById('aiSolverInput');
+        const aiSolverUploadArea = document.getElementById('aiSolverUploadArea');
+        const aiSolverInfo = document.getElementById('aiSolverInfo');
+        const aiSolverName = document.getElementById('aiSolverName');
+        const aiSolverBtn = document.getElementById('aiSolverBtn');
+        const solutionDisplay = document.getElementById('solutionDisplay');
+        const solutionContent = document.getElementById('solutionContent');
+
+        aiSolverUploadArea.addEventListener('click', () => aiSolverInput.click());
+
+        aiSolverInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                aiSolverName.textContent = file.name;
+                aiSolverInfo.classList.add('show');
+                aiSolverBtn.disabled = false;
+                solutionDisplay.classList.remove('show');
+            }
+        });
+
+        // Drag and drop for AI solver
+        aiSolverUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            aiSolverUploadArea.classList.add('dragover');
+        });
+
+        aiSolverUploadArea.addEventListener('dragleave', () => {
+            aiSolverUploadArea.classList.remove('dragover');
+        });
+
+        aiSolverUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            aiSolverUploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.type.includes('pdf') || file.type.includes('image'))) {
+                aiSolverInput.files = e.dataTransfer.files;
+                aiSolverName.textContent = file.name;
+                aiSolverInfo.classList.add('show');
+                aiSolverBtn.disabled = false;
+                solutionDisplay.classList.remove('show');
+            }
+        });
+
+        // AI Solver Button
+        aiSolverBtn.addEventListener('click', async () => {
+            const file = aiSolverInput.files[0];
+            if (!file) return;
+
+            showProcessing('AI is analyzing your problem...');
+            solutionDisplay.classList.remove('show');
+
+            try {
+                let imageBase64 = null;
+                let textContent = '';
+
+                if (file.type.includes('image')) {
+                    // Handle image files
+                    imageBase64 = await fileToBase64(file);
+                } else if (file.type === 'application/pdf') {
+                    // Handle PDF files - convert first page to image
+                    const arrayBuffer = await file.arrayBuffer();
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                    const pdf = await loadingTask.promise;
+                    const page = await pdf.getPage(1);
+                    
+                    const viewport = page.getViewport({ scale: 2.0 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    
+                    await page.render({
+                        canvasContext: context,
+                        viewport: viewport
+                    }).promise;
+                    
+                    imageBase64 = canvas.toDataURL('image/png').split(',')[1];
+                    
+                    // Also extract text
+                    const textContentObj = await page.getTextContent();
+                    textContent = textContentObj.items.map(item => item.str).join(' ');
+                }
+
+                // Call Claude AI API
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 4000,
+                        messages: [{
+                            role: 'user',
+                            content: [
+                                ...(imageBase64 ? [{
+                                    type: 'image',
+                                    source: {
+                                        type: 'base64',
+                                        media_type: file.type.includes('png') ? 'image/png' : 'image/jpeg',
+                                        data: imageBase64
+                                    }
+                                }] : []),
+                                {
+                                    type: 'text',
+                                    text: `You are an expert programming tutor and problem solver. Please analyze this image/document which contains a programming problem or code.
+
+Your task:
+1. Identify the programming problem or question
+2. Understand what's being asked
+3. Provide a complete, working solution with proper code
+4. Add helpful comments explaining the logic
+5. If it's a specific algorithm problem, explain the approach
+
+Format your response with:
+- Problem Description
+- Solution Approach
+- Complete Code (with comments)
+- Explanation of key concepts
+
+${textContent ? `\n\nExtracted text from document: ${textContent}` : ''}
+
+Please provide a comprehensive solution that would help someone understand and solve this problem.`
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.content.find(c => c.type === 'text')?.text || 'No solution generated';
+
+                // Display solution
+                solutionContent.innerHTML = `<pre><code>${escapeHtml(aiResponse)}</code></pre>`;
+                solutionDisplay.classList.add('show');
+                
+                // Apply syntax highlighting
+                hljs.highlightAll();
+
+                hideProcessing();
+                
+            } catch (error) {
+                console.error('AI Solver error:', error);
+                hideProcessing();
+                alert('❌ Error solving problem with AI. This feature requires an API key. Please contact the developer or try the document conversion features instead.');
+            }
+        });
+
+        // Helper functions
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Copy solution button
+        document.getElementById('copySolutionBtn').addEventListener('click', () => {
+            const text = solutionContent.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Solution copied to clipboard!');
+            });
+        });
+
+        // Download solution button
+        document.getElementById('downloadSolutionBtn').addEventListener('click', () => {
+            const text = solutionContent.innerText;
+            const blob = new Blob([text], { type: 'text/plain' });
+            downloadFile(blob, 'solution.txt');
+        });
+
+        // Setup document converters
+        setupFileUpload('wordToPdfInput', 'wordToPdfInfo', 'wordToPdfName', 'wordToPdfBtn');
+        setupFileUpload('pdfToWordInput', 'pdfToWordInfo', 'pdfToWordName', 'pdfToWordBtn');
+        setupFileUpload('excelToPdfInput', 'excelToPdfInfo', 'excelToPdfName', 'excelToPdfBtn');
+        setupFileUpload('pptToPdfInput', 'pptToPdfInfo', 'pptToPdfName', 'pptToPdfBtn');
+
+        // [Previous conversion functions remain the same - Word to PDF, PDF to Word, Excel to PDF, PPT to PDF]
+        // Word to PDF Conversion
+        document.getElementById('wordToPdfBtn').addEventListener('click', async () => {
+            const input = document.getElementById('wordToPdfInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            showProcessing('Converting Word to PDF...');
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                const html = result.value;
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'pt', 'a4');
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                tempDiv.style.width = '595px';
+                tempDiv.style.padding = '40px';
+                tempDiv.style.fontFamily = 'Arial, sans-serif';
+                tempDiv.style.fontSize = '12px';
+                tempDiv.style.lineHeight = '1.6';
+                tempDiv.style.color = '#000';
+                tempDiv.style.background = '#fff';
+                document.body.appendChild(tempDiv);
+
+                const canvas = await html2canvas(tempDiv, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+                
+                document.body.removeChild(tempDiv);
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 595;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                const pdfBlob = pdf.output('blob');
+                const filename = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
+                downloadFile(pdfBlob, filename);
+                
+                hideProcessing();
+                alert('✅ Word to PDF conversion successful!');
+            } catch (error) {
+                console.error('Conversion error:', error);
+                hideProcessing();
+                alert('❌ Error converting file. Please try again.');
+            }
+        });
+
+        // PDF to Word Conversion
+        document.getElementById('pdfToWordBtn').addEventListener('click', async () => {
+            const input = document.getElementById('pdfToWordInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            showProcessing('Converting PDF to Word...');
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                const numPages = pdf.numPages;
+                
+                let allTextContent = [];
+                
+                for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    
+                    let pageText = '';
+                    let lastY = -1;
+                    
+                    textContent.items.forEach((item) => {
+                        if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
+                            pageText += '\n';
+                        }
+                        pageText += item.str + ' ';
+                        lastY = item.transform[5];
+                    });
+                    
+                    allTextContent.push({
+                        pageNumber: pageNum,
+                        text: pageText.trim()
+                    });
+                }
+                
+                const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+                
+                const docChildren = [];
+                
+                docChildren.push(
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `Converted from: ${file.name}`,
+                                bold: true,
+                                size: 32,
+                                color: "2563EB",
+                            }),
+                        ],
+                        spacing: { after: 200 },
+                    })
+                );
+                
+                docChildren.push(
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `Total Pages: ${numPages}`,
+                                size: 22,
+                                italics: true,
+                                color: "6B7280",
+                            }),
+                        ],
+                        spacing: { after: 300 },
+                    })
+                );
+                
+                allTextContent.forEach((pageContent, index) => {
+                    docChildren.push(
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: `Page ${pageContent.pageNumber}`,
+                                    bold: true,
+                                    size: 28,
+                                    color: "10B981",
+                                }),
+                            ],
+                            spacing: {
+                                before: index === 0 ? 0 : 400,
+                                after: 200,
+                            },
+                            heading: HeadingLevel.HEADING_2,
+                        })
+                    );
+                    
+                    const paragraphs = pageContent.text.split('\n').filter(p => p.trim().length > 0);
+                    
+                    paragraphs.forEach(paragraphText => {
+                        docChildren.push(
+                            new Paragraph({
+                                children: [
+                                    new TextRun({
+                                        text: paragraphText,
+                                        size: 24,
+                                    }),
+                                ],
+                                spacing: {
+                                    after: 120,
+                                    line: 360,
+                                },
+                            })
+                        );
+                    });
+                });
+                
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: 720,
+                                    right: 720,
+                                    bottom: 720,
+                                    left: 720,
+                                },
+                            },
+                        },
+                        children: docChildren,
+                    }],
+                });
+
+                const blob = await Packer.toBlob(doc);
+                const filename = file.name.replace(/\.[^/.]+$/, '') + '.docx';
+                downloadFile(blob, filename);
+                
+                hideProcessing();
+                alert(`✅ PDF to Word conversion successful! Extracted ${numPages} pages.`);
+            } catch (error) {
+                console.error('Conversion error:', error);
+                hideProcessing();
+                alert('❌ Error converting PDF. The file may be password-protected, corrupted, or contain only images.');
+            }
+        });
+
+        // Excel to PDF Conversion
+        document.getElementById('excelToPdfBtn').addEventListener('click', async () => {
+            const input = document.getElementById('excelToPdfInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            showProcessing('Converting Excel to PDF...');
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const html = XLSX.utils.sheet_to_html(worksheet);
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'pt', 'a4');
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                tempDiv.style.width = '595px';
+                tempDiv.style.padding = '20px';
+                tempDiv.style.fontSize = '10px';
+                tempDiv.style.background = '#fff';
+                
+                const tables = tempDiv.getElementsByTagName('table');
+                for (let table of tables) {
+                    table.style.borderCollapse = 'collapse';
+                    table.style.width = '100%';
+                    table.style.fontSize = '9px';
+                }
+                
+                const cells = tempDiv.getElementsByTagName('td');
+                for (let cell of cells) {
+                    cell.style.border = '1px solid #ddd';
+                    cell.style.padding = '4px';
+                }
+                
+                const headers = tempDiv.getElementsByTagName('th');
+                for (let header of headers) {
+                    header.style.border = '1px solid #ddd';
+                    header.style.padding = '4px';
+                    header.style.backgroundColor = '#f0f0f0';
+                }
+                
+                document.body.appendChild(tempDiv);
+
+                const canvas = await html2canvas(tempDiv, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+                
+                document.body.removeChild(tempDiv);
+
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 595;
+                const pageHeight = 842;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                const pdfBlob = pdf.output('blob');
+                const filename = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
+                downloadFile(pdfBlob, filename);
+                
+                hideProcessing();
+                alert('✅ Excel to PDF conversion successful!');
+            } catch (error) {
+                console.error('Conversion error:', error);
+                hideProcessing();
+                alert('❌ Error converting file. Please try again.');
+            }
+        });
+
+        // PPT to PDF Conversion
+        document.getElementById('pptToPdfBtn').addEventListener('click', async () => {
+            const input = document.getElementById('pptToPdfInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            showProcessing('Creating reference PDF...');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('l', 'pt', 'a4');
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                pdf.setFillColor(37, 99, 235);
+                pdf.rect(0, 0, pageWidth, 80, 'F');
+                
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFontSize(28);
+                pdf.text('PowerPoint Document', pageWidth / 2, 45, { align: 'center' });
+                
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFontSize(16);
+                pdf.text(`Original File: ${file.name}`, 60, 140);
+                pdf.text(`File Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`, 60, 170);
+                pdf.text(`Date: ${new Date().toLocaleDateString()}`, 60, 200);
+                
+                pdf.setFillColor(239, 246, 255);
+                pdf.roundedRect(60, 240, pageWidth - 120, 200, 10, 10, 'F');
+                pdf.setDrawColor(59, 130, 246);
+                pdf.setLineWidth(2);
+                pdf.roundedRect(60, 240, pageWidth - 120, 200, 10, 10, 'S');
+                
+                pdf.setFontSize(18);
+                pdf.setTextColor(37, 99, 235);
+                pdf.text('For Full Slide Conversion:', 80, 270);
+                
+                pdf.setFontSize(12);
+                pdf.setTextColor(55, 65, 81);
+                const lines = [
+                    'Open your PPTX in Microsoft PowerPoint',
+                    'Go to File → Save As → PDF',
+                    'Or use Google Slides → Download → PDF'
+                ];
+                
+                let yPos = 310;
+                lines.forEach(line => {
+                    pdf.text('• ' + line, 80, yPos);
+                    yPos += 30;
+                });
+                
+                pdf.setFontSize(10);
+                pdf.setTextColor(148, 163, 184);
+                pdf.text('Generated by Envolex - Developed by Anshuman Panigrahi', pageWidth / 2, pageHeight - 20, { align: 'center' });
+                
+                const pdfBlob = pdf.output('blob');
+                const filename = file.name.replace(/\.[^/.]+$/, '') + '_reference.pdf';
+                downloadFile(pdfBlob, filename);
+                
+                hideProcessing();
+                alert('📄 Reference PDF created! For full conversion, use PowerPoint\'s "Save as PDF" feature.');
+            } catch (error) {
+                console.error('Error:', error);
+                hideProcessing();
+                alert('❌ Error creating reference PDF.');
+            }
+        });
+    </script>
+</body>
+</html>
